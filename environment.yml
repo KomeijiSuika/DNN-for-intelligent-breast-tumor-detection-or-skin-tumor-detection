@@ -4,7 +4,9 @@ channels:
   - nvidia
   - conda-forge
 dependencies:
-  - python>=3.10
+  - python=3.12.12
+  - pytorch=2.5.1
+  - pytorch-cuda=12.4
   - pip
   - numpy>=1.23
   - pyyaml>=6.0
@@ -14,8 +16,6 @@ dependencies:
   # GPU build (recommended if you have an NVIDIA GPU).
   # Note: Even if you installed CUDA Toolkit 13.0 locally, PyTorch typically ships its own CUDA runtime.
   # Most current PyTorch conda builds target CUDA 12.x (e.g., 12.1). This is normal.
-  - pytorch>=2.0
-  - pytorch-cuda=12.1
   - pip:
       # Install this repo as a package (optional but convenient for running `python -m metasurface_dnn ...`)
       - -e .
