@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "metasurface-dnn"
+version = "0.1.0"
+description = "Metasurface-based diffractive neural network (3-layer phase-only) simulation for tumor detection"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [{name = "Course Project"}]
+dependencies = [
+  "numpy>=1.23",
+  "pyyaml>=6.0",
+  "tqdm>=4.66",
+  "matplotlib>=3.7",
+  "torch>=2.0",
+  "pillow>=10.0",
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]

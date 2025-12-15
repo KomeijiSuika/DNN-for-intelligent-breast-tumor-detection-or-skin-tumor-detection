@@ -1,0 +1,12 @@
+# Example LUT: phase (rad) -> geometry parameter (arbitrary)
+# Replace with the provided meta-atom structure mapping from your lab handout/simulation.
+phase_rad,geom_param
+0.0,0.10
+0.785398,0.15
+1.570796,0.20
+2.356194,0.25
+3.141593,0.30
+3.926991,0.35
+4.712389,0.40
+5.497787,0.45
+6.283185,0.50

@@ -1,2 +1,34 @@
 Diffractive-Deep-Neural-Networks
 onn-simulation
+
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Environments
+.venv/
+venv/
+.env
+
+# Data & outputs (keep placeholders / docs)
+data/**
+!data/README.md
+!data/**/.gitkeep
+
+outputs/**
+!outputs/README.md
+!outputs/**/.gitkeep
+
+reports/figures/**
+!reports/figures/.gitkeep
+
+# Model artifacts
+*.pt
+*.pth
+*.npz
+*.npy

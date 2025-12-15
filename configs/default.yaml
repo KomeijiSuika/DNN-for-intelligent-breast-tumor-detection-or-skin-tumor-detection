@@ -1,0 +1,46 @@
+seed: 42
+
+device: auto  # auto|cpu|cuda
+
+data:
+  # If these files exist, they will be used.
+  # Expected format: npz with keys: x (N,H,W float32), y (N int64)
+  train_npz: data/processed/train.npz
+  val_npz: data/processed/val.npz
+  test_npz: data/processed/test.npz
+  # If real data is not provided, a small synthetic dataset is used for smoke-test.
+  use_synthetic_if_missing: true
+  synthetic:
+    n_train: 800
+    n_val: 200
+    n_test: 200
+    image_size: 128
+
+physics:
+  wavelength_m: 3.0e-3     # example: 0.1 THz (~3 mm). Replace with your lab setting.
+  pixel_size_m: 2.0e-4     # sampling pitch on each plane
+  n0: 1.0
+  # propagation distance between planes (input->L1->L2->L3->detector)
+  z_list_m: [0.02, 0.02, 0.02, 0.02]
+
+model:
+  layers: 3
+  phase_init: uniform  # uniform|zeros
+
+training:
+  epochs: 20
+  batch_size: 32
+  lr: 1.0e-2
+  weight_decay: 0.0
+  log_every: 50
+
+output:
+  root_dir: outputs
+  run_name: null  # null -> auto timestamp
+
+classifier:
+  # Two detector regions for binary classification.
+  # Each region box is [x0, x1, y0, y1) in pixel indices.
+  regions:
+    - [8, 56, 8, 56]
+    - [72, 120, 72, 120]

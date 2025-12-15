@@ -1,3 +1,17 @@
+Metadata-Version: 2.4
+Name: metasurface-dnn
+Version: 0.1.0
+Summary: Metasurface-based diffractive neural network (3-layer phase-only) simulation for tumor detection
+Author: Course Project
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: numpy>=1.23
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: tqdm>=4.66
+Requires-Dist: matplotlib>=3.7
+Requires-Dist: torch>=2.0
+Requires-Dist: pillow>=10.0
+
 # Metasurface-based Diffractive Neural Network (3-layer) | Tumor Detection (Simulation)
 
 本仓库实现一个**基于超表面(phase-only metasurface)的衍射神经网络**，用于**乳腺肿瘤/皮肤肿瘤二分类检测**（只需要仿真结果，不做实体加工）。
