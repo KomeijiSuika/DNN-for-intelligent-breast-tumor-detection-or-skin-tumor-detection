@@ -1,0 +1,47 @@
+seed: 42
+
+device: auto  # auto|cpu|cuda
+
+data:
+  train_npz: data/processed/emnist_letters_train.npz
+  val_npz: data/processed/emnist_letters_val.npz
+  test_npz: data/processed/emnist_letters_test.npz
+  use_synthetic_if_missing: false
+
+physics:
+  # Your setting: 30 GHz -> λ ≈ 10 mm.
+  wavelength_m: 1.0e-2
+  pixel_size_m: 1.0e-3
+  n0: 1.0
+  z_list_m: [0.10, 0.10, 0.10, 0.10]
+
+material:
+  # PolyJet Vero White Plus (given):
+  eps_r: 2.802
+  tan_delta: 0.0357
+
+model:
+  layers: 3
+  phase_init: uniform
+
+training:
+  epochs: 10
+  batch_size: 64
+  lr: 1.0e-2
+  weight_decay: 0.0
+  log_every: 50
+
+output:
+  root_dir: outputs
+  run_name: null
+
+classifier:
+  # 26 classes (EMNIST letters). We use a 2x13 grid of detector squares.
+  scheme: grid
+  num_classes: 26
+  grid:
+    rows: 2
+    cols: 13
+    margin: 6
+    gap: 2
+    square: 8

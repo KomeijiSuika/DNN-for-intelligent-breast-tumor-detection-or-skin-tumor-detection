@@ -17,6 +17,44 @@ def _regions_from_cfg(regions_cfg):
     return [DetectorRegion(int(r[0]), int(r[1]), int(r[2]), int(r[3])) for r in regions_cfg]
 
 
+def _regions_grid(*, size: int, rows: int, cols: int, square: int, margin: int, gap: int, num_classes: int):
+    if rows * cols < num_classes:
+        raise ValueError(f"grid {rows}x{cols} has {rows*cols} cells < num_classes={num_classes}")
+    needed_w = cols * square + (cols - 1) * gap + 2 * margin
+    needed_h = rows * square + (rows - 1) * gap + 2 * margin
+    if needed_w > size or needed_h > size:
+        raise ValueError(f"grid does not fit into detector plane size={size}: need {needed_h}x{needed_w}")
+
+    regions: list[DetectorRegion] = []
+    for r in range(rows):
+        for c in range(cols):
+            if len(regions) >= num_classes:
+                break
+            x0 = margin + r * (square + gap)
+            y0 = margin + c * (square + gap)
+            regions.append(DetectorRegion(x0=x0, x1=x0 + square, y0=y0, y1=y0 + square))
+        if len(regions) >= num_classes:
+            break
+    return regions
+
+
+def _build_regions(cfg: dict, *, size: int):
+    clf = cfg.get("classifier", {})
+    scheme = clf.get("scheme", "explicit")
+    if scheme == "grid":
+        grid = clf["grid"]
+        return _regions_grid(
+            size=size,
+            rows=int(grid["rows"]),
+            cols=int(grid["cols"]),
+            square=int(grid["square"]),
+            margin=int(grid.get("margin", 0)),
+            gap=int(grid.get("gap", 0)),
+            num_classes=int(clf["num_classes"]),
+        )
+    return _regions_from_cfg(clf["regions"])
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/default.yaml")
@@ -46,7 +84,7 @@ def main():
         z_list_m=list(cfg["physics"]["z_list_m"]),
         n0=cfg["physics"].get("n0", 1.0),
         phase_init=cfg["model"].get("phase_init", "uniform"),
-        detector_regions=_regions_from_cfg(cfg["classifier"]["regions"]),
+        detector_regions=_build_regions(cfg, size=size),
     ).to(device)
     model.load_state_dict(ckpt["model_state"], strict=True)
     model.eval()

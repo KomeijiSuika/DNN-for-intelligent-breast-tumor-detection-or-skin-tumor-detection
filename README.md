@@ -1,8 +1,13 @@
-# Metasurface-based Diffractive Neural Network (3-layer) | Tumor Detection (Simulation)
+# Metasurface-based Diffractive Neural Network (3-layer) | EMNIST Letters (Microwave, Simulation)
 
-本仓库实现一个**基于超表面(phase-only metasurface)的衍射神经网络**，用于**乳腺肿瘤/皮肤肿瘤二分类检测**（只需要仿真结果，不做实体加工）。
+本课设分两步：
 
-你需要设计 3 层超表面的 meta-atom 分布（等效为每层的空间相位分布 $\phi(x,y)\in[0,2\pi)$ ），让入射电磁波在自由空间传播 + 相位调制后，在探测面形成可区分的能量分布，从而完成分类。
+1) **算法与仿真**：设计一个**微波频段**的三层衍射神经网络（phase-only metasurface），完成 **EMNIST 字母分类（26 类）**。
+2) **工程验证**：用 3D 打印材料实现相位层（或等效结构），并在 CST 中选取若干案例验证。
+
+当前仓库主要完成第 1 步（算法与仿真），并提供导出结果（相位掩膜、厚度图、预测 CSV）以对接第 2 步。
+
+你需要设计 3 层超表面的 meta-atom 分布（等效为每层的空间相位分布 $\phi(x,y)\in[0,2\pi)$ ），让入射电磁波在自由空间传播 + 相位调制后，在探测面形成**26 个类别对应的能量分布**，从而完成分类。
 
 本实现参考了仓库中已有的衍射网络资料（如 [onn-simulation](onn-simulation/README.md) 的“传播层 + 调制层 + 探测层”思想），但这里**严格按题目要求：3 层、相位-only、仿真为主**。
 
@@ -35,7 +40,7 @@ $$U_\text{out}(x,y)=U_\text{in}(x,y)\,e^{j\phi(x,y)},\quad \phi\in[0,2\pi).$$
 前向传播就是电磁波的传播与调制；
 损失函数把探测面的光强分布映射为分类分数（例如两个探测区域能量之差），用梯度下降即可训练相位掩膜。
 
-本仓库实现一个二分类探测器：在探测面选取两个窗口区域 $R_0,R_1$，以
+本仓库实现一个多分类探测器：在探测面选取多个窗口区域 $R_c$（默认 2×13 网格，共 26 个），以
 $$s_c=\sum_{(x,y)\in R_c} |U(x,y)|^2$$
 作为 logits，经过 softmax 得到分类概率。
 
@@ -52,6 +57,7 @@ $$s_c=\sum_{(x,y)\in R_c} |U(x,y)|^2$$
 		- [export_meta_atoms.py](src/metasurface_dnn/export_meta_atoms.py): 结合 LUT 将相位量化成 meta-atom 几何参数
 - 配置
 	- [configs/default.yaml](configs/default.yaml)
+	- [configs/emnist_letters.yaml](configs/emnist_letters.yaml)
 - 数据占位
 	- [data/README.md](data/README.md)
 - 输出占位
@@ -61,37 +67,25 @@ $$s_c=\sum_{(x,y)\in R_c} |U(x,y)|^2$$
 
 注意：仓库中历史参考资料目录 `Diffractive-Deep-Neural-Networks/`、`onn-simulation/` 当前被 `.gitignore` 忽略；本项目的可复现实现在 `src/` 下，不依赖它们被提交。
 
-## 3. 数据集约定（预留输入/输出）
+## 3. 数据集约定（EMNIST Letters / 预留输入输出）
 
 ### 3.1 推荐格式（processed）
 把处理好的数据放在 `data/processed/`：
 
-- `train.npz`, `val.npz`, `test.npz`
+- `emnist_letters_train.npz`, `emnist_letters_val.npz`, `emnist_letters_test.npz`
 
 每个 `.npz` 内包含：
 - `x`: `(N,H,W)` float32，取值建议归一化到 `[0,1]`（作为入射场幅度）
-- `y`: `(N,)` int64，二分类标签 `0/1`
+- `y`: `(N,)` int64，类别标签 `0..25`（对应 26 个字母类别）
 
-### 3.2 原始图片到 npz（raw → processed）
-若你有原始图片数据，建议放为：
-
-```
-data/raw/train/0/*.png
-data/raw/train/1/*.png
-data/raw/val/0/*.png
-data/raw/val/1/*.png
-data/raw/test/0/*.png
-data/raw/test/1/*.png
-```
-
-然后运行：
+### 3.2 自动下载并导出 EMNIST Letters（推荐）
 
 ```
-python -m metasurface_dnn.prepare_dataset --raw_root data/raw --image_size 128
+python -m metasurface_dnn.prepare_emnist --root data/raw --out_dir data/processed --image_size 128
 ```
 
-### 3.3 没有真实数据时
-为了“能跑通并产出仿真结果”，默认配置会在缺少 `data/processed/*.npz` 时自动生成一个小型**合成数据集**（仅用于管线自检，不代表医学有效性）。
+### 3.3 没有数据时
+EMNIST 会自动下载并导出到 `data/processed/`，因此通常不需要你手动准备数据。
 
 ## 4. 如何运行（训练 + 仿真 + 导出）
 
@@ -102,10 +96,10 @@ pip install -r requirements.txt
 pip install -e .
 ```
 
-### 4.2 训练 3 层相位-only DNN
+### 4.2 训练 3 层相位-only DNN（EMNIST Letters）
 
 ```
-python -m metasurface_dnn.train --config configs/default.yaml
+python -m metasurface_dnn.train --config configs/emnist_letters.yaml
 ```
 
 输出：
@@ -116,7 +110,7 @@ python -m metasurface_dnn.train --config configs/default.yaml
 ### 4.3 生成仿真强度图（探测面）
 
 ```
-python -m metasurface_dnn.simulate --config configs/default.yaml --checkpoint outputs/checkpoints/best.pt --n 8
+python -m metasurface_dnn.simulate --config configs/emnist_letters.yaml --checkpoint outputs/checkpoints/best.pt --n 8
 ```
 
 输出：
@@ -126,7 +120,7 @@ python -m metasurface_dnn.simulate --config configs/default.yaml --checkpoint ou
 ### 4.4 预测输出 CSV（用于交作业的“预留输出”）
 
 ```
-python -m metasurface_dnn.predict --config configs/default.yaml --checkpoint outputs/checkpoints/best.pt --split test
+python -m metasurface_dnn.predict --config configs/emnist_letters.yaml --checkpoint outputs/checkpoints/best.pt --split test
 ```
 
 输出：`outputs/predictions/pred_test_<timestamp>.csv`
@@ -147,15 +141,29 @@ python -m metasurface_dnn.export_meta_atoms \
 	--out_dir outputs/meta_atom_exports
 ```
 
-## 5. 你需要按实验参数修改的地方
+## 5. 你需要按实验参数修改的地方（微波频段）
 
-- [configs/default.yaml](configs/default.yaml)
+以 [configs/emnist_letters.yaml](configs/emnist_letters.yaml) 为主：
 	- `physics.wavelength_m`: 实验频段对应波长
 	- `physics.pixel_size_m`: 采样间隔（等效 meta-atom pitch / 网格间距）
 	- `physics.z_list_m`: 4 段传播距离（输入→L1→L2→L3→探测面）
-	- `classifier.regions`: 两个探测窗口的位置（随采样尺寸/成像面设计调整）
+	- `classifier.grid`: 探测窗口网格（26 类默认 2×13），可按探测面尺寸调整
 
-## 6. 交付物建议（报告/截图）
+## 6. 对接 3D 打印 / CST 的导出
+
+训练得到的 `phase_masks.npz` 是每层的相位分布（0..2π）。如果你要用均匀介质“厚度变化”来等效相位延迟，可导出厚度图（用于后续建模/3D 打印/CST）：
+
+```
+python -m metasurface_dnn.phase_to_thickness \
+  --phase_npz outputs/<timestamp>/phase_masks.npz \
+  --wavelength_m 3e-2 \
+  --n_material 1.6 \
+  --out_dir outputs/printable
+```
+
+输出为每层的 `*.thickness_m.npy`（单位米）。
+
+## 7. 交付物建议（报告/截图）
 
 - 训练收敛曲线：`metrics.json` 中的 loss/acc（可自行画图）
 - 3 层相位分布：`phase_masks.npz`（可视化成 heatmap）
