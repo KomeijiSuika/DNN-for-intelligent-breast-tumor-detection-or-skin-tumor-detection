@@ -71,6 +71,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--require-real-data", action="store_true", help="Fail if data/processed/*.npz not found")
+    parser.add_argument("--checkpoint", default=None, help="Path to a checkpoint (.pt) to load model weights from")
     args = parser.parse_args()
 
     cfg = load_yaml(args.config)
@@ -117,6 +118,17 @@ def main():
         phase_init=cfg["model"].get("phase_init", "uniform"),
         detector_regions=regions,
     ).to(device)
+
+    # optionally load weights from a checkpoint (resume model weights)
+    if args.checkpoint:
+        if os.path.exists(args.checkpoint):
+            ck = torch.load(args.checkpoint, map_location=device)
+            # checkpoint may contain a dict with 'model_state'
+            state = ck.get("model_state", ck)
+            model.load_state_dict(state)
+            print(f"Loaded checkpoint: {args.checkpoint}")
+        else:
+            print(f"Warning: checkpoint {args.checkpoint} not found — training from scratch")
 
     loss_fn = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(
