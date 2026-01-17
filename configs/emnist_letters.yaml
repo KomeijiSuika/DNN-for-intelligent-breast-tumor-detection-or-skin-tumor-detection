@@ -1,6 +1,6 @@
 seed: 42
 
-device: auto  # auto|cpu|cuda
+device: cpu  # auto|cpu|cuda
 
 data:
   train_npz: data/processed/emnist_letters_train.npz
@@ -44,4 +44,4 @@ classifier:
     cols: 13
     margin: 6
     gap: 2
-    square: 8
+    square: 7
