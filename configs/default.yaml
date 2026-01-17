@@ -37,7 +37,7 @@ model:
 
 training:
   epochs: 200
-  batch_size: 32
+  batch_size: 64
   lr: 1.0e-2
   weight_decay: 0.0
   log_every: 50
