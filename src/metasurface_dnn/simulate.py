@@ -101,6 +101,7 @@ def main():
     x = torch.from_numpy(np.stack(xs, axis=0)).to(device)
     y = np.array(ys, dtype=np.int64)
 
+    # run inference and compute detector-plane intensity without tracking gradients
     with torch.no_grad():
         logits = model(x).cpu().numpy()
         pred = np.argmax(logits, axis=1)
@@ -116,7 +117,7 @@ def main():
     field = angular_spectrum_propagate(field, wavelength_m=cfg["physics"]["wavelength_m"], pixel_size_m=cfg["physics"]["pixel_size_m"], z_m=z_list[2], n0=cfg["physics"].get("n0", 1.0))
     field = model.l3(field)
     field = angular_spectrum_propagate(field, wavelength_m=cfg["physics"]["wavelength_m"], pixel_size_m=cfg["physics"]["pixel_size_m"], z_m=z_list[3], n0=cfg["physics"].get("n0", 1.0))
-    intensity = (field.real**2 + field.imag**2)[0].cpu().numpy()
+    intensity = (field.real**2 + field.imag**2)[0].detach().cpu().numpy()
 
     # plots
     plt.figure(figsize=(5, 4))

@@ -11,24 +11,32 @@ data:
   # If real data is not provided, a small synthetic dataset is used for smoke-test.
   use_synthetic_if_missing: true
   synthetic:
-    n_train: 800
+    n_train: 5000
     n_val: 200
     n_test: 200
     image_size: 128
 
 physics:
-  wavelength_m: 3.0e-3     # example: 0.1 THz (~3 mm). Replace with your lab setting.
-  pixel_size_m: 2.0e-4     # sampling pitch on each plane
+  # Set for 30 GHz operation (λ = 10 mm)
+  wavelength_m: 1.0e-2     # 30 GHz -> 10 mm
+  # sampling pitch on each plane (use 1 mm to match CST pixel size)
+  pixel_size_m: 1.0e-3     # 1 mm
   n0: 1.0
   # propagation distance between planes (input->L1->L2->L3->detector)
-  z_list_m: [0.02, 0.02, 0.02, 0.02]
+  # default set to 0.10 m (100 mm) to match CST spec; adjust if needed
+  z_list_m: [0.10, 0.10, 0.10, 0.10]
+
+material:
+  # Vero White Plus (manufacturing material)
+  eps_r: 2.802
+  tan_delta: 0.0357
 
 model:
   layers: 3
   phase_init: uniform  # uniform|zeros
 
 training:
-  epochs: 20
+  epochs: 200
   batch_size: 32
   lr: 1.0e-2
   weight_decay: 0.0

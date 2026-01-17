@@ -1,6 +1,6 @@
 seed: 42
 
-device: cpu  # auto|cpu|cuda
+device: auto  # auto|cpu|cuda
 
 data:
   train_npz: data/processed/emnist_letters_train.npz
@@ -25,7 +25,7 @@ model:
   phase_init: uniform
 
 training:
-  epochs: 10
+  epochs: 200
   batch_size: 64
   lr: 1.0e-2
   weight_decay: 0.0

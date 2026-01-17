@@ -4,3 +4,4 @@ tqdm>=4.66
 matplotlib>=3.7
 torch>=2.0
 pillow>=10.0
+torchvision>=0.16
