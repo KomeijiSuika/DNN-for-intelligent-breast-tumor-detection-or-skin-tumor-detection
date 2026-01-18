@@ -125,14 +125,11 @@ def _build_macro_content(
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/emnist_letters.yaml")
-    ap.add_argument("--thickness_dir", default="outputs/printable")
-    ap.add_argument("--out_macro", default="outputs/printable/build_3layers.cstmacro")
+    ap.add_argument("--thickness_dir", default=None)
+    ap.add_argument("--out_macro", default=None)
     ap.add_argument("--material_name", default="Vero_White_Plus")
     ap.add_argument("--downsample", type=int, default=1, help="block downsample factor (e.g. 4 for 128->32)")
     args = ap.parse_args()
-
-    thickness_dir = Path(args.thickness_dir)
-    thickness_dir.mkdir(parents=True, exist_ok=True)
 
     cfg = None
     pixel_size_m: float | None = None
@@ -142,6 +139,7 @@ def main() -> None:
     if cfg_path.exists():
         cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
         phys = cfg.get("physics", {}) or {}
+        out_root = str((cfg.get("output", {}) or {}).get("root_dir", "outputs"))
         pixel_size_m = float(phys.get("pixel_size_m", 1.0e-3))
         z_list = list(phys.get("z_list_m", [0.10, 0.10, 0.10, 0.10]))
         # layer positions: cumulative distances input->L1->L2->L3
@@ -156,6 +154,11 @@ def main() -> None:
         # fallback: simple equally spaced offsets
         layer_offsets_m = [0.0, 0.02, 0.04]
 
+    # Default output locations are derived from config.output.root_dir if present.
+    out_root = out_root if "out_root" in locals() else "outputs"
+    thickness_dir = Path(args.thickness_dir) if args.thickness_dir else Path(out_root) / "printable"
+    thickness_dir.mkdir(parents=True, exist_ok=True)
+
     layers = _load_thickness_layers(thickness_dir, n_layers=3)
 
     # optional downsampling (e.g. 128x128 -> 32x32 with factor=4)
@@ -167,7 +170,7 @@ def main() -> None:
 
     macro = _build_macro_content(layers, pixel_size_m=pixel_size_m, layer_offsets_m=layer_offsets_m, material_name=args.material_name)
 
-    out_macro_path = Path(args.out_macro)
+    out_macro_path = Path(args.out_macro) if args.out_macro else (Path(out_root) / "cst_macro" / "build_3layers.cstmacro")
     out_macro_path.parent.mkdir(parents=True, exist_ok=True)
     out_macro_path.write_text(macro, encoding="utf-8")
 

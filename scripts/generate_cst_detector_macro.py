@@ -34,10 +34,15 @@ from pathlib import Path
 from typing import List, Tuple
 
 import yaml
+import numpy as np
 
 
 def _build_regions_from_grid(size: int, rows: int, cols: int, square: int, margin: int, gap: int) -> List[Tuple[int, int, int, int]]:
-    """Reproduce _regions_grid layout: returns list of (x0,x1,y0,y1) pixel indices."""
+    """Reproduce _regions_grid layout: returns list of (x0,x1,y0,y1) pixel indices.
+
+    "size" is kept for compatibility with the training helper, but not used
+    directly here.
+    """
     regions: List[Tuple[int, int, int, int]] = []
     for r in range(rows):
         for c in range(cols):
@@ -53,24 +58,72 @@ def _build_regions_from_grid(size: int, rows: int, cols: int, square: int, margi
     return regions
 
 
-def _downsample_regions(regions: List[Tuple[int, int, int, int]], factor: int) -> List[Tuple[int, int, int, int]]:
-    """Map 128x128-pixel regions to a coarser grid.
+def _build_regions_for_downsample(
+    *,
+    base_size: int,
+    rows: int,
+    cols: int,
+    square: int,
+    margin: int,
+    gap: int,
+    downsample: int,
+) -> List[Tuple[int, int, int, int]]:
+    """Construct a uniform 2x13 grid on a coarse detector plane.
 
-    For downsample factor d (e.g. 2 -> 64x64, 4 -> 32x32), we
-    approximate each region by integer-dividing the pixel indices
-    and expanding the upper bound so that the physical coverage is
-    preserved as much as possible.
+    Instead of downsampling each 128x128 region separately (which leads to
+    slightly different sizes due to integer rounding), we recompute a grid on
+    the coarse plane so that all detector cells have the same pixel size and
+    do not overlap.
     """
-    if factor <= 1:
-        return regions
-    new: List[Tuple[int, int, int, int]] = []
-    for x0, x1, y0, y1 in regions:
-        nx0 = x0 // factor
-        nx1 = (x1 - 1) // factor + 1
-        ny0 = y0 // factor
-        ny1 = (y1 - 1) // factor + 1
-        new.append((nx0, nx1, ny0, ny1))
-    return new
+    if downsample <= 1:
+        return _build_regions_from_grid(base_size, rows, cols, square, margin, gap)
+
+    coarse_size = max(1, base_size // downsample)
+
+    # Start from a scaled version of the original square / gap, then adjust so
+    # that cols*square + (cols-1)*gap fits into coarse_size. Margins are then
+    # chosen to center the grid.
+    sq = max(1, int(round(square / downsample)))
+    gp = max(0, int(round(gap / downsample)))
+
+    # Ensure the grid fits into the coarse plane.
+    while sq > 1:
+        needed_w = cols * sq + (cols - 1) * gp
+        needed_h = rows * sq + (rows - 1) * gp
+        if needed_w <= coarse_size and needed_h <= coarse_size:
+            break
+        sq -= 1
+
+    needed_w = cols * sq + (cols - 1) * gp
+    needed_h = rows * sq + (rows - 1) * gp
+
+    if needed_w > coarse_size or needed_h > coarse_size:
+        # Fallback: squeeze to 1-pixel squares if still too large.
+        sq = 1
+        gp = 0
+        needed_w = cols * sq + (cols - 1) * gp
+        needed_h = rows * sq + (rows - 1) * gp
+
+    margin_used = max(0, (coarse_size - max(needed_w, needed_h)) // 2)
+
+    return _build_regions_from_grid(coarse_size, rows, cols, sq, margin_used, gp)
+
+
+def _infer_plane_size_from_npz(npz_path: Path) -> int | None:
+    if not npz_path.exists():
+        return None
+    try:
+        data = np.load(npz_path)
+        x = data["x"]
+        if x.ndim != 3:
+            return None
+        h = int(x.shape[-2])
+        w = int(x.shape[-1])
+        if h != w:
+            return None
+        return h
+    except Exception:
+        return None
 
 
 def _build_macro(
@@ -132,6 +185,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="configs/emnist_letters.yaml")
     ap.add_argument("--downsample", type=int, default=1, help="pixel downsample factor (1=128, 2=64, 4=32)")
+    ap.add_argument("--size", type=int, default=None, help="detector plane size in pixels; inferred from config.data.test_npz if omitted")
     ap.add_argument("--out_macro", default="outputs/detector_macros/detector_128.cstmacro")
     args = ap.parse_args()
 
@@ -159,14 +213,25 @@ def main() -> None:
     margin = int(grid.get("margin", 6))
     gap = int(grid.get("gap", 2))
 
-    size = 128  # training detector plane size in pixels
-    regions = _build_regions_from_grid(size=size, rows=rows, cols=cols, square=square, margin=margin, gap=gap)
-
     downsample = int(args.downsample) if args.downsample and args.downsample > 0 else 1
 
-    # remap regions to coarse pixel indices when using downsample, so that
-    # physical size matches the downsampled metasurface aperture
-    regions = _downsample_regions(regions, downsample)
+    # Determine detector plane size (in pixels) from explicit arg or from the dataset.
+    base_size = int(args.size) if args.size is not None else 0
+    if base_size <= 0:
+        data_cfg = cfg.get("data", {}) or {}
+        test_npz = Path(data_cfg.get("test_npz", ""))
+        inferred = _infer_plane_size_from_npz(test_npz) if str(test_npz) else None
+        base_size = int(inferred) if inferred is not None else 128
+
+    regions = _build_regions_for_downsample(
+        base_size=base_size,
+        rows=rows,
+        cols=cols,
+        square=square,
+        margin=margin,
+        gap=gap,
+        downsample=downsample,
+    )
 
     macro_text = _build_macro(pixel_size_m=pixel_size_m, detector_z_m=detector_z_m, grid_regions=regions, downsample=downsample)
 

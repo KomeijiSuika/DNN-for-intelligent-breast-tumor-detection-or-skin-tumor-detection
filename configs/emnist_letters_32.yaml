@@ -1,0 +1,50 @@
+# 32x32 training configuration for EMNIST letters
+# - Uses 32x32 processed EMNIST npz files
+# - Writes all training outputs/checkpoints to outputs32/
+# - Keeps total physical aperture ~128 mm by scaling pixel_size_m to 4 mm
+
+seed: 42
+device: cuda
+
+physics:
+  wavelength_m: 1.0e-2
+  # 32 pixels * 4 mm = 128 mm aperture (match previous 128x128 @ 1 mm)
+  pixel_size_m: 4.0e-3
+  n0: 1.0
+  z_list_m: [0.10, 0.10, 0.10, 0.10]
+
+material:
+  eps_r: 2.802
+  tan_delta: 0.0357
+
+data:
+  train_npz: data/processed_32/emnist_letters_train.npz
+  val_npz: data/processed_32/emnist_letters_val.npz
+  test_npz: data/processed_32/emnist_letters_test.npz
+  use_synthetic_if_missing: false
+
+model:
+  phase_init: uniform
+
+training:
+  epochs: 200
+  batch_size: 64
+  lr: 1.0e-3
+  weight_decay: 0.0
+  log_every: 50
+
+output:
+  root_dir: outputs32
+  run_name: null
+
+classifier:
+  scheme: grid
+  num_classes: 26
+  grid:
+    # Must fit on a 32x32 detector plane.
+    # 13*2 + 2*3 = 32 (cols*square + 2*margin)
+    rows: 2
+    cols: 13
+    square: 2
+    gap: 0
+    margin: 3

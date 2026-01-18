@@ -29,12 +29,13 @@ def phase_to_thickness_m(phase_rad: np.ndarray, *, wavelength_m: float, n_materi
 def main():
     p = argparse.ArgumentParser()
     p.add_argument("--phase_npz", required=True, help="phase_masks.npz from training")
+    p.add_argument("--config", default=None, help="optional yaml config; used to default out_dir")
     p.add_argument("--wavelength_m", type=float, required=True)
     p.add_argument("--n_material", type=float, default=None, help="Refractive index of 3D-print material")
     p.add_argument("--eps_r", type=float, default=None, help="Relative permittivity (use n≈sqrt(eps_r))")
     p.add_argument("--tan_delta", type=float, default=None, help="Loss tangent (recorded in metadata)")
     p.add_argument("--n0", type=float, default=1.0)
-    p.add_argument("--out_dir", default="outputs/printable")
+    p.add_argument("--out_dir", default=None)
     p.add_argument("--export_csv", action="store_true", help="Also export thickness maps as CSV for CST")
     args = p.parse_args()
 
@@ -45,7 +46,21 @@ def main():
     else:
         n_material = float(args.n_material)
 
-    out_dir = Path(args.out_dir)
+    if args.out_dir is not None:
+        out_dir = Path(args.out_dir)
+    else:
+        out_root = "outputs"
+        if args.config is not None:
+            cfg_path = Path(args.config)
+            if cfg_path.exists():
+                try:
+                    import yaml
+
+                    cfg = yaml.safe_load(cfg_path.read_text(encoding="utf-8"))
+                    out_root = str((cfg.get("output", {}) or {}).get("root_dir", "outputs"))
+                except Exception:
+                    out_root = "outputs"
+        out_dir = Path(out_root) / "printable"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     data = np.load(args.phase_npz)

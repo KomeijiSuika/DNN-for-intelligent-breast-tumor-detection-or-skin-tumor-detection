@@ -169,3 +169,120 @@ python -m metasurface_dnn.phase_to_thickness \
 - 3 层相位分布：`phase_masks.npz`（可视化成 heatmap）
 - 探测面强度分布：`intensity_sample0.png`
 - 测试集预测表：`pred_test_<timestamp>.csv`
+
+## 8. 32×32 分辨率版本（方便 CST 实验）
+
+在 CST 中如果只想用 32×32 的孔径（减少网格数量），可以用一个单独的 32×32 配置：`configs/emnist_letters_32.yaml`。整体流程与 128×128 类似，只是分辨率、像素间距和输出目录不同。
+
+### 8.1 生成 32×32 EMNIST 数据集
+
+```bash
+python -m metasurface_dnn.prepare_emnist \
+	--image_size 32 \
+	--out_dir data/processed_32
+```
+
+生成：
+- `data/processed_32/emnist_letters_train.npz`
+- `data/processed_32/emnist_letters_val.npz`
+- `data/processed_32/emnist_letters_test.npz`
+
+### 8.2 使用 32×32 配置训练
+
+```bash
+python -m metasurface_dnn.train --config configs/emnist_letters_32.yaml
+```
+
+说明：
+- `configs/emnist_letters_32.yaml` 中：
+	- 图像分辨率变为 32×32；
+	- `physics.pixel_size_m = 4.0e-3` → 32×4 mm = 128 mm，总孔径仍为 128 mm；
+	- 探测器网格改为适配 32×32 的 2×13 小方块（`square=2, margin=3`）。
+- 输出目录改为 `outputs32/`：
+	- `outputs32/<timestamp>/metrics.json`
+	- `outputs32/<timestamp>/phase_masks.npz`
+	- `outputs32/checkpoints/best.pt`
+
+### 8.3 用 32×32 模型做仿真/预测
+
+仿真探测面强度：
+
+```bash
+python -m metasurface_dnn.simulate \
+	--config configs/emnist_letters_32.yaml \
+	--checkpoint outputs32/checkpoints/best.pt \
+	--n 8
+```
+
+测试集预测 CSV：
+
+```bash
+python -m metasurface_dnn.predict \
+	--config configs/emnist_letters_32.yaml \
+	--checkpoint outputs32/checkpoints/best.pt \
+	--split test
+```
+
+### 8.4 32×32 相位 → 厚度（打印/CST 建模）
+
+```bash
+python -m metasurface_dnn.phase_to_thickness \
+	--phase_npz outputs32/<timestamp>/phase_masks.npz \
+	--config configs/emnist_letters_32.yaml \
+	--wavelength_m 1.0e-2 \
+	--eps_r 2.802 \
+	--n0 1.0 \
+	--export_csv
+```
+
+输出（默认在 `outputs32/printable/` 下）：
+- `layer1_phase_rad.thickness_m.npy/.csv`
+- `layer2_phase_rad.thickness_m.npy/.csv`
+- `layer3_phase_rad.thickness_m.npy/.csv`
+
+### 8.5 生成 32×32 三层结构的 CST 宏
+
+```bash
+python scripts/generate_cst_macro.py \
+	--config configs/emnist_letters_32.yaml
+```
+
+默认会在 `outputs32/cst_macro/` 下生成：
+- `build_3layers.cstmacro`
+
+该宏会：
+- 读取 `outputs32/printable/` 中 3 层厚度图；
+- 在 CST 中按 32×32 像素网格生成 3 个组件 `Layer1/2/3`，像素尺寸为 4 mm，总宽约 128 mm；
+- 层间 Z 位置与 `z_list_m = [0.10,0.10,0.10,0.10]` 保持一致。
+
+### 8.6 生成 32×32 字母源宏（CST 波源掩模）
+
+示例：随机选取一张 32×32 测试集字母，生成 32×32 的源掩模和预览图：
+
+```bash
+python scripts/generate_cst_source_macro.py \
+	--config configs/emnist_letters_32.yaml \
+	--resolution 32
+```
+
+输出（默认在 `outputs/source_macros/` 下）：
+- `source_32_<Letter>_idxrand.cstmacro`
+- `source_32_<Letter>_idxrand.png`
+
+说明：
+- 该宏在 `z ≈ 0` 平面上画出一个字母形状的 PEC 掩模，孔径大小约 128 mm×128 mm；
+- 在 CST 中配合一个从 −z 方向入射、朝 +z 传播的平面波，即可得到“字母形波前”。
+
+### 8.7 生成 32×32 探测器宏（2×13 汇聚区域）
+
+```bash
+python scripts/generate_cst_detector_macro.py \
+	--config configs/emnist_letters_32.yaml \
+	--downsample 1 \
+	--out_macro outputs/detector_macros/detector_32.cstmacro
+```
+
+该宏会在探测平面 `z ≈ 0.40 m` 处生成 26 个极薄砖块：
+- 名称为 `Det_A`…`Det_Z`，对应 26 个字母；
+- 在 32×32 网格上布置 2×13 个 2×2 像素的小方块，总宽约 128 mm；
+- 与 `configs/emnist_letters_32.yaml` 中的 `classifier.grid` 完全对应，可在 CST 后处理中按区域积分 |E|²。 

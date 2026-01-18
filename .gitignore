@@ -24,6 +24,8 @@ outputs/**
 !outputs/README.md
 !outputs/**/.gitkeep
 
+outputs32
+
 reports/figures/**
 !reports/figures/.gitkeep
 
